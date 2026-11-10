@@ -18,6 +18,7 @@
 <meta name="theme-color" content="#FFF4EC">
 <link rel="icon" type="image/png" href="/favicon.png">
 <link rel="apple-touch-icon" href="/apple-touch-icon.png">
+<script src="https://t1.kakaocdn.net/kakao_js_sdk/2.8.2/kakao.min.js" integrity="sha384-zt/G7/KfaRQ9dT/QIkS0ujMtzouJqzuSJcXVQu50x0rl/+mD1dc70AeOejVbMD9E" crossorigin="anonymous"></script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link href="https://fonts.googleapis.com/css2?family=Jua&family=Gowun+Dodum&display=swap" rel="stylesheet">
 <style>
@@ -80,6 +81,12 @@
   .linkline{display:flex;gap:8px}
   .linkline input{flex:1;font-size:13px;padding:10px 12px;border-radius:12px;font-family:ui-monospace,monospace;color:var(--sub)}
   .linkline button{border:none;background:var(--ink);color:#fff;border-radius:12px;padding:0 14px;font-family:"Jua";font-size:15px;cursor:pointer;white-space:nowrap}
+  .kakao{width:100%;border:none;border-radius:14px;padding:14px;margin-bottom:12px;background:#FEE500;color:#191600;
+    font-family:"Jua";font-size:18px;display:flex;align-items:center;justify-content:center;gap:8px;cursor:pointer}
+  .kakao svg{width:22px;height:22px}
+  .or{font-size:12.5px;color:var(--sub);text-align:center;margin:2px 0 8px}
+  .sharebtn{width:100%;border:2px solid #F2BCC6;background:#fff;color:var(--ink);border-radius:14px;padding:12px;margin-bottom:12px;
+    font-family:"Jua";font-size:16px;cursor:pointer}
   .result .tip{font-size:12.5px;color:var(--sub);margin-top:8px}
 
   /* ---------- receive ---------- */
@@ -112,6 +119,14 @@
   .rfoot .from{font-family:"Jua";font-size:19px;margin-bottom:16px}
   .rfoot .btns{display:flex;gap:10px;max-width:420px;margin:0 auto}
   .rfoot .btn{padding:14px;font-size:17px}
+  .rfoot .story{max-width:420px;margin:0 auto 10px;display:block;color:#fff;border:none;
+    background:linear-gradient(90deg,#F58529,#DD2A7B 55%,#8134AF);box-shadow:0 5px 0 #A3225F}
+  .ov{position:fixed;inset:0;z-index:20;background:rgba(40,20,20,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:14px}
+  .ov img{max-height:66vh;max-width:88vw;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);-webkit-touch-callout:default}
+  .ov p{color:#fff;font-family:"Jua";font-size:17px;margin:0;text-align:center;line-height:1.4}
+  .ov .row2{display:flex;gap:10px}
+  .ov a,.ov button{font-family:"Jua";font-size:16px;border:none;border-radius:12px;padding:11px 18px;cursor:pointer;text-decoration:none}
+  .ov a{background:#fff;color:var(--ink)} .ov button{background:var(--rose);color:#fff}
 </style>
 </head>
 <body>
@@ -156,7 +171,13 @@
   </div>
 
   <div class="result" id="result" hidden>
-    <div class="lbl">링크가 만들어졌어요! 🎉</div>
+    <div class="lbl">편지 포장 완료! 🎉</div>
+    <button class="kakao" id="kakaoBtn" type="button" hidden>
+      <svg viewBox="0 0 24 24"><path fill="#191600" d="M12 3C6.48 3 2 6.5 2 10.82c0 2.8 1.86 5.25 4.66 6.63l-.95 3.47c-.08.3.26.54.52.37l4.13-2.73c.54.07 1.08.11 1.64.11 5.52 0 10-3.5 10-7.85S17.52 3 12 3z"/></svg>
+      카카오톡으로 보내기
+    </button>
+    <button class="sharebtn" id="shareBtn" type="button" hidden>📤 다른 앱으로 보내기 (인스타 DM 등)</button>
+    <div class="or" id="orLine" hidden>또는 링크 복사</div>
     <div class="linkline">
       <input type="text" id="linkOut" readonly>
       <button type="button" id="copyBtn">복사</button>
@@ -194,6 +215,7 @@
 
   <div class="rfoot" id="rfoot">
     <div class="from" id="rFrom"></div>
+    <button class="btn story" id="storyBtn" type="button">📸 스토리에 자랑하기</button>
     <div class="btns">
       <button class="btn ghost" id="againBtn" type="button">↻ 다시 꺼내기</button>
       <button class="btn primary" id="sendBtn" type="button">나도 보내기</button>
@@ -201,9 +223,17 @@
   </div>
 </section>
 
+<div class="ov" id="ov" hidden>
+  <img id="ovImg" alt="빼빼로 편지 이미지">
+  <p>이미지를 길게 눌러 저장한 뒤<br>인스타 스토리에 올려주세요 📸</p>
+  <div class="row2"><a id="ovDl" download="bbaebbaero-letter.png">저장하기</a><button id="ovClose" type="button">닫기</button></div>
+</div>
+
 <script>
 /* ================= config ================= */
 const SHARE_BASE = ''; // 비워두면 현재 도메인을 그대로 씁니다
+const KAKAO_JS_KEY = '4bf042cdbe1353a90e448285461bc5f0';
+
 
 /* ================= flavors ================= */
 const FL = {
@@ -457,6 +487,73 @@ function b32enc(bytes){let bits=0,val=0,out='';for(const b of bytes){val=(val<<8
 function b32dec(s){let bits=0,val=0;const out=[];for(const c of s){const i=B32.indexOf(c);if(i<0)throw new Error('bad');val=(val<<5)|i;bits+=5;if(bits>=8){out.push((val>>>(bits-8))&255);bits-=8;val&=(1<<bits)-1;}}return new Uint8Array(out);}
 function encodeData(d){return 'p-'+b32enc(new TextEncoder().encode(JSON.stringify(d)));}
 function decodeData(h){const o=JSON.parse(new TextDecoder().decode(b32dec(h.slice(2))));if(typeof o.m!=='string')throw new Error('bad');if(!FL[o.c]||o.c==='heart')o.c='original';o.t=String(o.t||'').slice(0,8);o.f=String(o.f||'').slice(0,8);o.m=o.m.slice(0,40);return o;}
+/* 짧은 링크: 한글 한 글자를 2.2자 정도로 압축 (서버 없음) */
+const B64='ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789-_';
+const FLAV=['original','almond','strawberry','cookie','mix'];
+const SYM_SEP=0, SYM_NL=1, SYM_ESC=2, SYM_ASCII=3, SYM_JAMO=SYM_ASCII+95, SYM_HEART=SYM_JAMO+51, SYM_HANGUL=SYM_HEART+1, NSYM=BigInt(SYM_HANGUL+11172);
+function toSyms(str,out){
+  for(const ch of str){
+    const c=ch.codePointAt(0);
+    if(c>=0xAC00&&c<=0xD7A3) out.push(SYM_HANGUL+c-0xAC00);
+    else if(c>=0x3131&&c<=0x3163) out.push(SYM_JAMO+c-0x3131);
+    else if(c>=0x20&&c<=0x7E) out.push(SYM_ASCII+c-0x20);
+    else if(c===10) out.push(SYM_NL);
+    else if(c===0x2665) out.push(SYM_HEART);
+    else { const n=Number(NSYM); out.push(SYM_ESC, Math.floor(c/n), c%n); }
+  }
+}
+function packData(d){
+  const syms=[Math.max(0,FLAV.indexOf(d.c))];
+  toSyms(d.t||'',syms); syms.push(SYM_SEP); toSyms(d.f||'',syms); syms.push(SYM_SEP); toSyms(d.m,syms);
+  let n=1n; for(const v of syms) n=n*NSYM+BigInt(v);
+  let out=''; while(n>0n){ out=B64[Number(n%64n)]+out; n/=64n; }
+  return out;
+}
+function unpackData(h){
+  let n=0n; for(const ch of h){ const i=B64.indexOf(ch); if(i<0) throw new Error('bad'); n=n*64n+BigInt(i); }
+  const syms=[]; while(n>1n){ syms.unshift(Number(n%NSYM)); n/=NSYM; }
+  if(n!==1n||!syms.length) throw new Error('bad');
+  const fields=['','','']; let k=0;
+  for(let i=1;i<syms.length;i++){
+    const v=syms[i]; let ch;
+    if(v===SYM_SEP&&k<2){k++;continue;}
+    if(v===SYM_SEP) ch='';
+    else if(v===SYM_NL) ch='\n';
+    else if(v===SYM_ESC){ ch=String.fromCodePoint(syms[i+1]*Number(NSYM)+syms[i+2]); i+=2; }
+    else if(v>=SYM_HANGUL) ch=String.fromCharCode(0xAC00+v-SYM_HANGUL);
+    else if(v===SYM_HEART) ch='♥';
+    else if(v>=SYM_JAMO) ch=String.fromCharCode(0x3131+v-SYM_JAMO);
+    else ch=String.fromCharCode(0x20+v-SYM_ASCII);
+    fields[k]+=ch;
+  }
+  return {c:FLAV[syms[0]]||'original',t:fields[0].slice(0,8),f:fields[1].slice(0,8),m:fields[2].slice(0,40)};
+}
+async function makeLink(d){
+  const origin=(SHARE_BASE.startsWith('http')?SHARE_BASE:location.origin).replace(/\/$/,'');
+  return origin+'/#'+packData(d);
+}
+let lastLink='', lastData=null;
+function kakaoReady(){
+  try{ if(window.Kakao&&KAKAO_JS_KEY){ if(!Kakao.isInitialized()) Kakao.init(KAKAO_JS_KEY); return true; } }catch(e){console.warn(e);}
+  return false;
+}
+function shareKakao(){
+  if(!kakaoReady()||!lastLink) return false;
+  const d=lastData||{};
+  const origin=location.origin.startsWith('http')?location.origin:'https://bbaebbaero.nookin.dev';
+  const link={mobileWebUrl:lastLink,webUrl:lastLink};
+  Kakao.Share.sendDefault({
+    objectType:'feed',
+    content:{
+      title:(d.t?d.t+'에게 ':'')+'빼빼로 편지가 도착했어요 💌',
+      description:(d.f?d.f+'님이 보낸 ':'')+'빼빼로를 통에서 쏙 꺼내보세요!',
+      imageUrl:origin+'/og-image.png', imageWidth:1200, imageHeight:630,
+      link
+    },
+    buttons:[{title:'편지 열기',link}]
+  });
+  return true;
+}
 function shareBase(){return SHARE_BASE.startsWith('http')?SHARE_BASE:location.href.split('#')[0];}
 
 /* ================= CREATE ================= */
@@ -483,9 +580,13 @@ function renderPreview(){
 ['msg','to','from'].forEach(id=>$(id).addEventListener('input',renderPreview));
 $('heartBtn').onclick=()=>{const t=$('msg');const p=t.selectionStart??t.value.length;t.value=(t.value.slice(0,p)+'♥'+t.value.slice(p)).slice(0,24);t.focus();t.selectionStart=t.selectionEnd=p+1;renderPreview();};
 function validData(){const d=currentData();if(!buildSticks(d.m,d.c,{x:0,y:0,w:300,h:200}).sticks.length){$('warn').textContent='메시지를 먼저 써주세요!';$('msg').focus();return null;}return d;}
-$('makeBtn').onclick=()=>{
+$('makeBtn').onclick=async()=>{
   const d=validData(); if(!d) return;
-  $('linkOut').value=shareBase()+'#'+encodeData(d);
+  const btn=$('makeBtn'); if(btn.disabled) return;
+  btn.disabled=true; btn.textContent='포장하는 중…';
+  let link; try{link=await makeLink(d);}finally{btn.disabled=false;btn.textContent='링크 만들기';}
+  $('linkOut').value=link; lastLink=link; lastData=d;
+  const k=kakaoReady(), ns=!!navigator.share; $('kakaoBtn').hidden=!k; $('shareBtn').hidden=!ns; $('orLine').hidden=!(k||ns);
   $('result').hidden=false; $('copyTip').textContent='카톡이나 DM에 붙여넣으면 끝!';
   $('result').scrollIntoView({behavior:'smooth',block:'center'});
 };
@@ -494,6 +595,13 @@ $('copyBtn').onclick=async()=>{
   try{await navigator.clipboard.writeText(v);$('copyTip').textContent='복사됐어요! 이제 붙여넣기만 하면 돼요 ✨';}
   catch(e){const i=$('linkOut');i.focus();i.select();let ok=false;try{ok=document.execCommand('copy');}catch(_){}
     $('copyTip').textContent=ok?'복사됐어요! ✨':'링크를 길게 눌러 직접 복사해주세요';}
+};
+$('kakaoBtn').onclick=()=>{ if(!shareKakao()) $('copyTip').textContent='카카오톡 공유를 못 열었어요. 링크를 복사해서 보내주세요!'; };
+$('shareBtn').onclick=async()=>{
+  if(!lastLink||!navigator.share) return;
+  const d=lastData||{};
+  try{ await navigator.share({title:'빼빼로 편지 💌', text:(d.t?d.t+'에게 ':'')+'빼빼로 편지가 도착했어요 💌', url:lastLink}); }
+  catch(e){ if(e&&e.name!=='AbortError') $('copyTip').textContent='공유창을 못 열었어요. 링크를 복사해서 보내주세요!'; }
 };
 $('tryBtn').onclick=()=>{const d=validData();if(d)openReceive(d,true);};
 
@@ -590,8 +698,57 @@ function frame(now){
     RS.phase='done'; drawFinal();
     box.classList.add('gone');
     setTimeout(()=>$('rfoot').classList.add('show'),350);
+    prepareStory();
   }
 }
+
+/* ---------- 스토리 이미지 ---------- */
+let storyFile=null, storyURL='';
+function rrect(ctx,x,y,w,h,r){ctx.beginPath();ctx.moveTo(x+r,y);ctx.arcTo(x+w,y,x+w,y+h,r);ctx.arcTo(x+w,y+h,x,y+h,r);ctx.arcTo(x,y+h,x,y,r);ctx.arcTo(x,y,x+w,y,r);ctx.closePath();}
+async function makeStory(d){
+  const W=1080,H=1920, cv=document.createElement('canvas'); cv.width=W; cv.height=H;
+  const ctx=cv.getContext('2d');
+  try{await document.fonts.load('60px Jua');}catch(e){}
+  ctx.fillStyle='#FFF4EC'; ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#FFD6DD'; for(let y=27;y<H;y+=54)for(let x=27;x<W;x+=54){ctx.beginPath();ctx.arc(x,y,3.6,0,7);ctx.fill();}
+  ctx.textAlign='center'; ctx.textBaseline='middle';
+  // To pill
+  const to='To. '+(d.t||'너에게'); ctx.font='50px Jua'; const tw=ctx.measureText(to).width+70;
+  rrect(ctx,(W-tw)/2,210,tw,90,45); ctx.fillStyle='#fff'; ctx.fill(); ctx.lineWidth=4; ctx.strokeStyle='#F2BCC6'; ctx.stroke();
+  ctx.fillStyle='#E2445C'; ctx.fillText(to,W/2,257);
+  ctx.font='70px Jua'; ctx.fillStyle='#3B2219'; ctx.fillText((d.f?d.f+'님의 ':'')+'빼빼로 편지',W/2,400);
+  // sticks
+  ctx.save(); ctx.shadowColor='rgba(226,68,92,.15)'; ctx.shadowBlur=40; ctx.shadowOffsetY=12;
+  rrect(ctx,60,490,W-120,960,56); ctx.fillStyle='#FFFDF9'; ctx.fill(); ctx.restore();
+  rrect(ctx,60,490,W-120,960,56); ctx.setLineDash([18,14]); ctx.lineWidth=5; ctx.strokeStyle='#F2BCC6'; ctx.stroke(); ctx.setLineDash([]);
+  const b=buildSticks(d.m,d.c,{x:100,y:530,w:W-200,h:880});
+  for(const st of b.sticks) drawStick(ctx,st,st.cx,st.cy,st.ang,b.th,0);
+  // footer
+  ctx.font='48px Jua'; ctx.fillStyle='#C9354E'; ctx.fillText('나도 빼빼로 편지 보내기 💌',W/2,1610);
+  const url='bbaebbaero.nookin.dev'; ctx.font='46px Jua'; const uw=ctx.measureText(url).width+90;
+  rrect(ctx,(W-uw)/2,1680,uw,100,50); ctx.fillStyle='#E2445C'; ctx.fill();
+  ctx.fillStyle='#fff'; ctx.fillText(url,W/2,1732);
+  return cv;
+}
+async function prepareStory(){
+  storyFile=null; if(storyURL){URL.revokeObjectURL(storyURL);storyURL='';}
+  try{
+    const cv=await makeStory(RS.data);
+    const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+    storyURL=URL.createObjectURL(blob);
+    storyFile=new File([blob],'bbaebbaero-letter.png',{type:'image/png'});
+  }catch(e){console.warn(e);}
+}
+function showOverlay(){ if(!storyURL)return; $('ovImg').src=storyURL; $('ovDl').href=storyURL; $('ov').hidden=false; }
+$('ovClose').onclick=()=>{$('ov').hidden=true;};
+$('storyBtn').onclick=async()=>{
+  if(!storyFile){ await prepareStory(); if(!storyFile) return; }
+  // 이미지가 미리 준비돼 있어야 클릭 직후 바로 공유창이 열려요 (iOS 제약)
+  try{
+    if(navigator.canShare&&navigator.canShare({files:[storyFile]})){ await navigator.share({files:[storyFile]}); return; }
+  }catch(e){ if(e&&e.name==='AbortError') return; }
+  showOverlay();
+};
 
 /* drag-to-pull on the box */
 let drag=null;
@@ -603,7 +760,7 @@ box.addEventListener('click',()=>{if(RS.phase==='idle')launch();});box.addEventL
 
 $('againBtn').onclick=()=>resetReceive();
 $('sendBtn').onclick=()=>{
-  if(!RS.preview){try{history.replaceState(null,'',location.href.split('#')[0]);}catch(e){} $('msg').value=''; $('to').value=RS.data.f||''; $('from').value='';}
+  if(!RS.preview){try{history.replaceState(null,'','/');}catch(e){} $('msg').value=''; $('to').value=RS.data.f||''; $('from').value='';}
   showCreate();
 };
 
@@ -615,9 +772,14 @@ window.addEventListener('resize',()=>{clearTimeout(rT);rT=setTimeout(()=>{
 
 /* ================= routing ================= */
 function showCreate(){cancelAnimationFrame(RS.raf);$('receive').hidden=true;$('create').hidden=false;requestAnimationFrame(renderPreview);}
-function route(){
+async function route(){
   const h=location.hash.slice(1);
-  if(h.startsWith('p-')){try{openReceive(decodeData(h),false);return;}catch(e){}}
+  if(h){
+    let d=null;
+    if(h.startsWith('p-')){try{d=decodeData(h);}catch(e){}}   // 예전 긴 링크도 계속 열림
+    if(!d){try{d=unpackData(h); if(!d.m) d=null;}catch(e){}}
+    if(d){openReceive(d,false);return;}
+  }
   showCreate();
 }
 window.addEventListener('hashchange',route);
