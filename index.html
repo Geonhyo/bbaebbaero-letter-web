@@ -67,6 +67,7 @@
   .chip i{width:16px;height:16px;border-radius:50%;display:inline-block;border:1.5px solid rgba(0,0,0,.08)}
   .chip.on{border-color:var(--rose);background:#FFEFF2;color:var(--rose-d)}
   .mini{border:none;background:#FFE3E8;color:var(--rose-d);border-radius:10px;padding:4px 9px;font:inherit;font-size:13px;cursor:pointer}
+  .hintline{color:var(--sub);font-size:12.5px;margin-top:6px}
   .warn{color:var(--rose-d);font-size:13px;margin-top:6px;min-height:0}
   .btn{
     width:100%;border:none;border-radius:18px;padding:16px;font-family:"Jua";font-size:19px;cursor:pointer;
@@ -146,6 +147,7 @@
   <div class="field">
     <label>메시지 <small><button class="mini" id="heartBtn" type="button">♥ 넣기</button></small></label>
     <textarea id="msg" rows="2" maxlength="24" placeholder="사랑해&#10;고마워♥"></textarea>
+    <div class="hintline">한글 · 영문 · 숫자 · ♥ · ! ? ~ ^ . , - + : / 만 쓸 수 있어요</div>
     <div class="warn" id="warn"></div>
   </div>
 
@@ -567,6 +569,7 @@ const chips=$('chips');
   chips.appendChild(b);
 });
 function currentData(){return {m:$('msg').value.trim(),t:$('to').value.trim(),f:$('from').value.trim(),c:flavor};}
+let keepWarnUntil=0;
 function renderPreview(){
   const cv=$('pcanvas'); const {ctx,w,h}=fitCanvas(cv);
   ctx.clearRect(0,0,w,h);
@@ -574,10 +577,43 @@ function renderPreview(){
   const b=buildSticks(d.m,d.c,{x:14,y:14,w:w-28,h:h-28});
   for(const s of b.sticks) drawStick(ctx,s,s.cx,s.cy,s.ang,b.th,0);
   $('pempty').hidden=b.sticks.length>0;
-  $('warn').textContent=b.unsupported.length?`이 글자는 빼빼로로 못 만들어요: ${b.unsupported.join(' ')}`:(b.overflow?'너무 길어서 뒷부분이 잘려요. 조금만 줄여주세요!':'');
   $('result').hidden=true;
+  if(Date.now()<keepWarnUntil) return;
+  $('warn').textContent=b.unsupported.length?`이 글자는 빼빼로로 못 만들어요: ${b.unsupported.join(' ')}`:(b.overflow?'너무 길어서 뒷부분이 잘려요. 조금만 줄여주세요!':'');
 }
-['msg','to','from'].forEach(id=>$(id).addEventListener('input',renderPreview));
+/* 메시지 입력 화이트리스트: 빼빼로로 그릴 수 있는 글자만 남김 */
+const HEARTS=/[❤♡💕💗💖💘💓💞💝🩷🧡💛💚💙💜🤎🖤🤍]/gu;
+function allowedChar(ch){ return ch==='\n'||ch===' '||!!glyph(ch); }
+function sanitizeMsg(){
+  const t=$('msg'), before=t.value;
+  const norm=before.replace(/\uFE0F|\u200D/g,'').replace(HEARTS,'♥').replace(/\r/g,'');
+  const removed=new Set(); let out='';
+  for(const ch of norm){ if(allowedChar(ch)) out+=ch; else removed.add(ch); }
+  out=out.replace(/\n{2,}/g,'\n').replace(/ {2,}/g,' ');
+  if(out!==before){
+    const pos=t.selectionStart??out.length;
+    const lost=[...before.slice(0,pos)].length-[...out.slice(0,Math.max(0,pos))].length;
+    t.value=out;
+    const np=Math.max(0,Math.min(out.length,pos-(before.length-out.length)));
+    try{t.selectionStart=t.selectionEnd=np;}catch(e){}
+  }
+  return [...removed];
+}
+let composing=false, warnTimer=0;
+function onMsgInput(){
+  if(composing) return;               // 한글 조합 중에는 건드리지 않음
+  const removed=sanitizeMsg();
+  renderPreview();
+  if(removed.length){
+    $('warn').textContent=`'${removed.join(' ')}' 는 빼빼로로 만들 수 없어서 뺐어요`;
+    keepWarnUntil=Date.now()+2500;
+    clearTimeout(warnTimer); warnTimer=setTimeout(()=>{keepWarnUntil=0; if($('warn').textContent.startsWith("'")) $('warn').textContent='';},2600);
+  }
+}
+$('msg').addEventListener('compositionstart',()=>{composing=true;});
+$('msg').addEventListener('compositionend',()=>{composing=false; onMsgInput();});
+$('msg').addEventListener('input',onMsgInput);
+['to','from'].forEach(id=>$(id).addEventListener('input',renderPreview));
 $('heartBtn').onclick=()=>{const t=$('msg');const p=t.selectionStart??t.value.length;t.value=(t.value.slice(0,p)+'♥'+t.value.slice(p)).slice(0,24);t.focus();t.selectionStart=t.selectionEnd=p+1;renderPreview();};
 function validData(){const d=currentData();if(!buildSticks(d.m,d.c,{x:0,y:0,w:300,h:200}).sticks.length){$('warn').textContent='메시지를 먼저 써주세요!';$('msg').focus();return null;}return d;}
 $('makeBtn').onclick=async()=>{
