@@ -342,12 +342,13 @@ const PUNCT = {
   '/':{w:.6,segs:[[.85,.05,.15,.95]]}
 };
 
+const SPACE_G={w:.45,segs:[]};
 function glyph(ch){
   const c=ch.charCodeAt(0);
   if(c>=0xAC00&&c<=0xD7A3) return {w:1,segs:syllable(ch)};
   const j=loneJamo(ch); if(j) return {w:1,segs:j};
   if('♥♡❤💕💗💖💘💓'.includes(ch)) return {w:1,segs:HEART,heart:true};
-  if(ch===' ') return {w:.45,segs:[]};
+  if(ch===' ') return SPACE_G;
   const u=ch.toUpperCase();
   if(LAT[u]) return {w:/[0-9]/.test(u)?.68:(u==='W'||u==='M'?.9:.74),segs:LAT[u]};
   if(PUNCT[ch]) return PUNCT[ch];
@@ -355,23 +356,38 @@ function glyph(ch){
 }
 
 /* ================= layout ================= */
-const MAX_PER_LINE=6, MAX_LINES=3, GAP=.2, LINE_GAP=.34;
+const MAX_PER_LINE=7, MAX_LINES=4, GAP=.2, LINE_GAP=.34;
 function layout(text){
   const chars=[...text.replace(/\uFE0F|\u200D/g,'')];
   const unsupported=new Set();
-  const lines=[]; let cur=[];
-  const push=()=>{ while(cur.length&&cur[cur.length-1].sp) cur.pop(); if(cur.length) lines.push(cur); cur=[]; };
+  // 1) 원래 줄바꿈 기준으로 문단 나누기 → 2) 띄어쓰기 단위로 단어 나누기
+  const paras=[]; let words=[], word=[];
+  const endWord=()=>{if(word.length)words.push(word);word=[];};
+  const endPara=()=>{endWord();if(words.length)paras.push(words);words=[];};
   for(const ch of chars){
-    if(ch==='\n'||ch==='\r'){push();continue;}
+    if(ch==='\n'||ch==='\r'){endPara();continue;}
+    if(ch===' '){endWord();continue;}
     const g=glyph(ch);
     if(!g){unsupported.add(ch);continue;}
-    if(ch===' '&&!cur.length) continue;
-    cur.push(Object.assign({sp:ch===' '},g));
-    if(cur.filter(x=>!x.sp).length>=MAX_PER_LINE) push();
+    word.push(g);
   }
-  push();
+  endPara();
+  // 3) 단어가 잘리지 않게 줄 채우기 (한 단어가 한 줄보다 길 때만 자름)
+  const SP=glyph(' '), lines=[];
+  for(const ws of paras){
+    let cur=[];
+    for(let w of ws){
+      while(w.length>MAX_PER_LINE){ if(cur.length){lines.push(cur);cur=[];} lines.push(w.slice(0,MAX_PER_LINE)); w=w.slice(MAX_PER_LINE); }
+      if(!w.length) continue;
+      const curLen=cur.filter(g=>g!==SP).length;
+      if(cur.length && curLen+w.length>MAX_PER_LINE){lines.push(cur);cur=[];}
+      if(cur.length) cur.push(SP);
+      cur.push(...w);
+    }
+    if(cur.length) lines.push(cur);
+  }
   const L=lines.slice(0,MAX_LINES).map(gs=>({glyphs:gs,width:gs.reduce((a,g)=>a+g.w,0)+GAP*(gs.length-1)}));
-  return {lines:L,maxW:Math.max(0,...L.map(l=>l.width)),unsupported:[...unsupported]};
+  return {lines:L,maxW:Math.max(0,...L.map(l=>l.width)),unsupported:[...unsupported],overflow:lines.length>MAX_LINES};
 }
 
 /* ================= rng ================= */
@@ -381,7 +397,7 @@ function mulberry32(a){return function(){a|=0;a=a+0x6D2B79F5|0;let t=Math.imul(a
 /* ================= sticks ================= */
 function buildSticks(text,flavor,R){
   const L=layout(text);
-  if(!L.lines.length) return {sticks:[],th:0,unsupported:L.unsupported};
+  if(!L.lines.length) return {sticks:[],th:0,unsupported:L.unsupported,overflow:false};
   const n=L.lines.length, totH=n+(n-1)*LINE_GAP;
   const S=Math.min(R.w*.92/L.maxW, R.h*.9/totH, 128);
   const th=Math.max(3.4,S*.085);
@@ -403,7 +419,7 @@ function buildSticks(text,flavor,R){
       x+=(g.w+GAP)*S;
     }
   });
-  return {sticks,th,unsupported:L.unsupported};
+  return {sticks,th,unsupported:L.unsupported,overflow:L.overflow};
 }
 
 function seg(ctx,x1,y1,x2,y2,w,c){ctx.strokeStyle=c;ctx.lineWidth=w;ctx.beginPath();ctx.moveTo(x1,y1);ctx.lineTo(x2,y2);ctx.stroke();}
@@ -461,7 +477,7 @@ function renderPreview(){
   const b=buildSticks(d.m,d.c,{x:14,y:14,w:w-28,h:h-28});
   for(const s of b.sticks) drawStick(ctx,s,s.cx,s.cy,s.ang,b.th,0);
   $('pempty').hidden=b.sticks.length>0;
-  $('warn').textContent=b.unsupported.length?`이 글자는 빼빼로로 못 만들어요: ${b.unsupported.join(' ')}`:'';
+  $('warn').textContent=b.unsupported.length?`이 글자는 빼빼로로 못 만들어요: ${b.unsupported.join(' ')}`:(b.overflow?'너무 길어서 뒷부분이 잘려요. 조금만 줄여주세요!':'');
   $('result').hidden=true;
 }
 ['msg','to','from'].forEach(id=>$(id).addEventListener('input',renderPreview));
@@ -582,7 +598,8 @@ let drag=null;
 box.addEventListener('pointerdown',e=>{if(RS.phase!=='idle')return;drag={y:e.clientY,dy:0};tips.classList.add('drag');try{box.setPointerCapture(e.pointerId);}catch(_){}});
 box.addEventListener('pointermove',e=>{if(!drag)return;drag.dy=Math.max(0,Math.min(80,drag.y-e.clientY));tips.style.transform=`translateY(${-drag.dy*.55}px)`;});
 function endDrag(){if(!drag)return;const d=drag;drag=null;tips.classList.remove('drag');if(d.dy>28||d.dy<6)launch();else tips.style.transform='';}
-box.addEventListener('pointerup',endDrag);box.addEventListener('pointercancel',()=>{drag=null;tips.classList.remove('drag');tips.style.transform='';});
+box.addEventListener('pointerup',endDrag);
+box.addEventListener('click',()=>{if(RS.phase==='idle')launch();});box.addEventListener('pointercancel',()=>{drag=null;tips.classList.remove('drag');tips.style.transform='';});
 
 $('againBtn').onclick=()=>resetReceive();
 $('sendBtn').onclick=()=>{
