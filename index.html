@@ -124,6 +124,34 @@
   .rfoot .btn{padding:14px;font-size:17px}
   .rfoot .story{max-width:420px;margin:0 auto 10px;display:block;color:#fff;border:none;
     background:linear-gradient(90deg,#F58529,#DD2A7B 55%,#8134AF);box-shadow:0 5px 0 #A3225F}
+  /* coupon toggle (create) */
+  .ctoggle{display:flex;align-items:center;gap:12px;background:#fff;border:2px solid #F1D3CB;border-radius:16px;padding:12px 14px;cursor:pointer;user-select:none}
+  .ctoggle.on{border-color:var(--rose);background:#FFF2F4}
+  .ctoggle .ck{width:24px;height:24px;border-radius:8px;border:2px solid #E9B9C2;display:flex;align-items:center;justify-content:center;flex:none;color:#fff;font-size:15px}
+  .ctoggle.on .ck{background:var(--rose);border-color:var(--rose)}
+  .ctoggle b{font-family:"Jua";font-weight:400;font-size:16.5px;display:block}
+  .ctoggle small{color:var(--sub);font-size:12.5px}
+  /* coupon modal (receive) */
+  .cmodal{position:fixed;inset:0;z-index:15;background:linear-gradient(rgba(59,34,25,0) 30%,rgba(59,34,25,.55) 62%);display:flex;flex-direction:column;align-items:center;justify-content:flex-end;padding:22px 22px max(5vh,22px);gap:12px}
+  .ticket{position:relative;width:min(340px,90vw);background:#FFFDF9;border-radius:20px;box-shadow:0 18px 40px rgba(120,30,50,.28);overflow:hidden;
+    animation:tpop .55s cubic-bezier(.3,1.5,.5,1) both}
+  @keyframes tpop{from{transform:translateY(40px) scale(.85) rotate(-4deg);opacity:0}to{transform:none;opacity:1}}
+  .ticket .top{background:var(--rose);color:#fff;padding:16px 20px 14px;font-family:"Jua";font-size:25px;display:flex;align-items:center;gap:8px}
+  .ticket .top small{margin-left:auto;font-size:13px;opacity:.85;font-family:"Gowun Dodum"}
+  .ticket .perf{height:0;border-top:3px dashed #F2BCC6;margin:0 16px;position:relative}
+  .ticket .perf:before,.ticket .perf:after{content:"";position:absolute;top:-13px;width:24px;height:24px;border-radius:50%;background:#B98F86}
+  .ticket .perf:before{left:-30px}.ticket .perf:after{right:-30px}
+  .ticket .what{font-family:"Jua";font-size:25px;color:var(--rose-d);text-align:center;padding:18px 16px 4px}
+  .ticket .rows{padding:6px 20px 6px}
+  .ticket .r{display:flex;gap:12px;padding:7px 0;font-size:15.5px;border-bottom:1px dashed #F3DCE0}
+  .ticket .r:last-child{border-bottom:none}
+  .ticket .r span{color:var(--sub);width:80px;flex:none;font-size:13.5px;padding-top:1px}
+  .ticket .r b{font-family:"Jua";font-weight:400;font-size:17px;color:var(--ink)}
+  .ticket .r b.hl{color:var(--rose-d)}
+  .ticket .note{font-size:12px;color:var(--sub);padding:2px 20px 16px}
+  .cbtns{display:flex;gap:10px;width:min(340px,90vw)}
+  .cbtns .btn{padding:14px;font-size:17px}
+  .rfoot .cagain{background:none;border:none;font-family:"Jua";font-size:15px;color:var(--rose-d);margin:-6px 0 12px;cursor:pointer}
   .ov{position:fixed;inset:0;z-index:20;background:rgba(40,20,20,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:14px}
   .ov img{max-height:66vh;max-width:88vw;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);-webkit-touch-callout:default}
   .ov p{color:#fff;font-family:"Jua";font-size:17px;margin:0;text-align:center;line-height:1.4}
@@ -167,6 +195,13 @@
   <div class="field">
     <label>맛 고르기</label>
     <div class="chips" id="chips"></div>
+  </div>
+
+  <div class="field">
+    <div class="ctoggle" id="cToggle" role="checkbox" aria-checked="false" tabindex="0">
+      <div class="ck">✓</div>
+      <div><b>빼빼로 교환권 같이 보내기</b><small>만나면 빼빼로 사주기 쿠폰이 편지와 함께 가요</small></div>
+    </div>
   </div>
 
   <div class="actions">
@@ -219,6 +254,7 @@
 
   <div class="rfoot" id="rfoot">
     <div class="from" id="rFrom"></div>
+    <button class="cagain" id="cAgain" type="button" hidden>교환권 다시 보기</button>
     <button class="btn story" id="storyBtn" type="button">📸 스토리에 자랑하기</button>
     <div class="btns">
       <button class="btn ghost" id="againBtn" type="button">↻ 다시 꺼내기</button>
@@ -227,9 +263,27 @@
   </div>
 </section>
 
+<div class="cmodal" id="cModal" hidden>
+  <div class="ticket" id="ticket">
+    <div class="top">빼빼로 교환권 <small>No.1111</small></div>
+    <div class="what">만나면 빼빼로 쏩니다</div>
+    <div class="rows">
+      <div class="r"><span>사주는 사람</span><b id="cFrom"></b></div>
+      <div class="r"><span>받는 사람</span><b id="cTo"></b></div>
+      <div class="r"><span>유효기간</span><b>다음에 볼 때까지</b></div>
+    </div>
+    <div class="perf"></div>
+    <div class="note">※ 직접 만나야 사용할 수 있어요. 양도 불가 😏</div>
+  </div>
+  <div class="cbtns">
+    <button class="btn ghost" id="cClose" type="button">닫기</button>
+    <button class="btn primary" id="cSave" type="button">교환권 저장</button>
+  </div>
+</div>
+
 <div class="ov" id="ov" hidden>
   <img id="ovImg" alt="빼빼로 편지 이미지">
-  <p>이미지를 길게 눌러 저장한 뒤<br>인스타 스토리에 올려주세요 📸</p>
+  <p id="ovText">이미지를 길게 눌러 저장한 뒤<br>인스타 스토리에 올려주세요 📸</p>
   <div class="row2"><a id="ovDl" download="bbaebbaero-letter.png">저장하기</a><button id="ovClose" type="button">닫기</button></div>
 </div>
 
@@ -507,7 +561,7 @@ function toSyms(str,out){
   }
 }
 function packData(d){
-  const syms=[Math.max(0,FLAV.indexOf(d.c))];
+  const syms=[Math.max(0,FLAV.indexOf(d.c))+(d.k?5:0)];
   toSyms(d.t||'',syms); syms.push(SYM_SEP); toSyms(d.f||'',syms); syms.push(SYM_SEP); toSyms(d.m,syms);
   let n=1n; for(const v of syms) n=n*NSYM+BigInt(v);
   let out=''; while(n>0n){ out=B64[Number(n%64n)]+out; n/=64n; }
@@ -530,7 +584,7 @@ function unpackData(h){
     else ch=String.fromCharCode(0x20+v-SYM_ASCII);
     fields[k]+=ch;
   }
-  return {c:FLAV[syms[0]]||'original',t:fields[0].slice(0,8),f:fields[1].slice(0,8),m:fields[2].slice(0,40)};
+  return {c:FLAV[syms[0]%5]||'original',k:syms[0]>=5,t:fields[0].slice(0,8),f:fields[1].slice(0,8),m:fields[2].slice(0,40)};
 }
 async function makeLink(d){
   const origin=(SHARE_BASE.startsWith('http')?SHARE_BASE:location.origin).replace(/\/$/,'');
@@ -550,7 +604,7 @@ function shareKakao(){
     objectType:'feed',
     content:{
       title:(d.t?d.t+'님에게 ':'')+'빼빼로 편지가 도착했어요 💌',
-      description:(d.f?d.f+'님이 보낸 ':'')+'빼빼로를 통에서 쏙 꺼내보세요!',
+      description:d.k?'빼빼로 편지에 빼빼로 교환권이 함께 들어 있어요!':(d.f?d.f+'님이 보낸 ':'')+'빼빼로를 통에서 쏙 꺼내보세요!',
       imageUrl:origin+'/og-image.png', imageWidth:1200, imageHeight:630,
       link
     },
@@ -570,7 +624,11 @@ const chips=$('chips');
   b.onclick=()=>{flavor=k;[...chips.children].forEach(c=>c.classList.toggle('on',c===b));renderPreview();};
   chips.appendChild(b);
 });
-function currentData(){return {m:$('msg').value.trim(),t:$('to').value.trim(),f:$('from').value.trim(),c:flavor};}
+let couponOn=false;
+function setCoupon(v){couponOn=!!v;const t=$('cToggle');t.classList.toggle('on',couponOn);t.setAttribute('aria-checked',couponOn);$('result').hidden=true;}
+$('cToggle').onclick=()=>setCoupon(!couponOn);
+$('cToggle').onkeydown=e=>{if(e.key===' '||e.key==='Enter'){e.preventDefault();setCoupon(!couponOn);}};
+function currentData(){return {m:$('msg').value.trim(),t:$('to').value.trim(),f:$('from').value.trim(),c:flavor,k:couponOn};}
 let keepWarnUntil=0;
 function renderPreview(){
   const cv=$('pcanvas'); const {ctx,w,h}=fitCanvas(cv);
@@ -690,6 +748,7 @@ function resetReceive(){
   cancelAnimationFrame(RS.raf); RS.phase='idle';
   box.classList.remove('gone','shake'); tips.style.transform=''; tips.style.opacity='1';
   $('rfoot').classList.remove('show'); $('hint').style.opacity='1';
+  $('cModal').hidden=true; $('cAgain').hidden=true; clearTimeout(couponTimer); couponFile=null;
   requestAnimationFrame(()=>{measure(); RS.ctx.clearRect(0,0,RS.w,RS.h); placeHint();});
 }
 function placeHint(){const bb=box.getBoundingClientRect();$('hint').style.top=(bb.top-34-(bb.height*.0))+'px';}
@@ -736,6 +795,7 @@ function frame(now){
     RS.phase='done'; drawFinal();
     box.classList.add('gone');
     setTimeout(()=>$('rfoot').classList.add('show'),350);
+    if(RS.data&&RS.data.k){ couponTimer=setTimeout(openCoupon,900); }
     prepareStory();
   }
 }
@@ -777,7 +837,7 @@ async function prepareStory(){
     storyFile=new File([blob],'bbaebbaero-letter.png',{type:'image/png'});
   }catch(e){console.warn(e);}
 }
-function showOverlay(){ if(!storyURL)return; $('ovImg').src=storyURL; $('ovDl').href=storyURL; $('ov').hidden=false; }
+function showOverlay(url=storyURL,text='이미지를 길게 눌러 저장한 뒤<br>인스타 스토리에 올려주세요 📸',name='bbaebbaero-letter.png'){ if(!url)return; $('ovImg').src=url; $('ovDl').href=url; $('ovDl').setAttribute('download',name); $('ovText').innerHTML=text; $('ov').hidden=false; }
 $('ovClose').onclick=()=>{$('ov').hidden=true;};
 $('storyBtn').onclick=async()=>{
   if(!storyFile){ await prepareStory(); if(!storyFile) return; }
@@ -787,6 +847,65 @@ $('storyBtn').onclick=async()=>{
   }catch(e){ if(e&&e.name==='AbortError') return; }
   showOverlay();
 };
+
+/* ---------- 빼빼로 교환권 ---------- */
+let couponTimer=0, couponFile=null, couponURL='';
+function couponWho(d){return (d.f||'비밀')+' → '+(d.t||'너');}
+async function makeCouponImage(d){
+  const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
+  try{await document.fonts.load('60px Jua');}catch(e){}
+  ctx.fillStyle='#FFF4EC';ctx.fillRect(0,0,W,H);
+  ctx.fillStyle='#FFD6DD';for(let y=27;y<H;y+=54)for(let x=27;x<W;x+=54){ctx.beginPath();ctx.arc(x,y,3.6,0,7);ctx.fill();}
+  const X=110,Y=250,TW=W-220,TH=740,R=48;
+  ctx.save();ctx.shadowColor='rgba(150,40,60,.22)';ctx.shadowBlur=60;ctx.shadowOffsetY=24;rrect(ctx,X,Y,TW,TH,R);ctx.fillStyle='#FFFDF9';ctx.fill();ctx.restore();
+  ctx.save();rrect(ctx,X,Y,TW,TH,R);ctx.clip();ctx.fillStyle='#E2445C';ctx.fillRect(X,Y,TW,150);ctx.restore();
+  ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillStyle='#fff';ctx.font='70px Jua';ctx.fillText('빼빼로 교환권',X+60,Y+78);
+  ctx.textAlign='right';ctx.font='32px Jua';ctx.globalAlpha=.85;ctx.fillText('No.1111',X+TW-56,Y+80);ctx.globalAlpha=1;
+  ctx.textAlign='center';ctx.font='62px Jua';ctx.fillStyle='#C9354E';ctx.fillText('만나면 빼빼로 쏩니다',W/2,Y+225);
+  const rows=[['사주는 사람',d.f||'비밀','#3B2219'],['받는 사람',d.t||'너','#3B2219'],['유효기간','다음에 볼 때까지','#3B2219']];
+  rows.forEach(([k,v,c],i)=>{const y=Y+330+i*100;ctx.textAlign='left';ctx.font='34px "Gowun Dodum"';ctx.fillStyle='#8A6A5E';ctx.fillText(k,X+60,y);
+    ctx.font='50px Jua';ctx.fillStyle=c;ctx.fillText(v,X+280,y);
+    if(i<2){ctx.strokeStyle='#F3DCE0';ctx.lineWidth=3;ctx.setLineDash([10,10]);ctx.beginPath();ctx.moveTo(X+56,y+59);ctx.lineTo(X+TW-56,y+59);ctx.stroke();ctx.setLineDash([]);}});
+  const py=Y+TH-120;ctx.strokeStyle='#F2BCC6';ctx.lineWidth=6;ctx.setLineDash([18,14]);ctx.beginPath();ctx.moveTo(X+40,py);ctx.lineTo(X+TW-40,py);ctx.stroke();ctx.setLineDash([]);
+  ctx.fillStyle='#FFF4EC';[X,X+TW].forEach(cx=>{ctx.beginPath();ctx.arc(cx,py,30,0,7);ctx.fill();});
+  ctx.textAlign='left';ctx.font='32px "Gowun Dodum"';ctx.fillStyle='#8A6A5E';ctx.fillText('※ 직접 만나야 사용할 수 있어요. 양도 불가 😏',X+60,py+62);
+  ctx.textAlign='center';ctx.font='44px Jua';ctx.fillStyle='#C9354E';ctx.fillText('11월 11일, 빼빼로 편지와 함께 💌',W/2,150);
+  const url='bbaebbaero.nookin.dev';ctx.font='40px Jua';const uw=ctx.measureText(url).width+80;
+  rrect(ctx,(W-uw)/2,H-170,uw,88,44);ctx.fillStyle='#E2445C';ctx.fill();ctx.fillStyle='#fff';ctx.fillText(url,W/2,H-125);
+  return cv;
+}
+async function prepareCoupon(d){
+  couponFile=null; if(couponURL){URL.revokeObjectURL(couponURL);couponURL='';}
+  try{const cv=await makeCouponImage(d);const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
+    couponURL=URL.createObjectURL(blob);couponFile=new File([blob],'bbaebbaero-coupon.png',{type:'image/png'});}catch(e){console.warn(e);}
+}
+function openCoupon(){
+  const d=RS.data||{};
+  $('cFrom').textContent=d.f||'비밀'; $('cTo').textContent=d.t||'너';
+  const tk=$('ticket'); tk.style.animation='none'; void tk.offsetWidth; tk.style.animation='';
+  $('cModal').hidden=false; $('cAgain').hidden=false;
+  if(!couponFile) prepareCoupon(d);   // 미리 만들어 둬야 저장 버튼 누를 때 바로 공유창이 열려요 (iOS)
+}
+const UA=navigator.userAgent||'';
+const IN_APP=/KAKAOTALK|Instagram|FBAN|FBAV|NAVER|Line\//i.test(UA);
+const IS_IOS=/iPhone|iPad|iPod/i.test(UA)||(navigator.platform==='MacIntel'&&navigator.maxTouchPoints>1);
+$('cSave').onclick=async()=>{
+  if(!couponFile){ await prepareCoupon(RS.data||{}); if(!couponFile) return; }
+  // 앱 안 브라우저(카톡·인스타)는 다운로드를 막아서 길게 눌러 저장으로 안내
+  if(!IN_APP){
+    if(IS_IOS){ // iOS는 공유창의 '이미지 저장' 한 번이면 사진첩에 바로 들어가요
+      try{ if(navigator.canShare&&navigator.canShare({files:[couponFile]})){ await navigator.share({files:[couponFile]}); return; } }
+      catch(e){ if(e&&e.name==='AbortError') return; }
+    } else {
+      const a=document.createElement('a'); a.href=couponURL; a.download='bbaebbaero-coupon.png'; document.body.appendChild(a); a.click(); a.remove();
+      $('cSave').textContent='저장했어요!'; setTimeout(()=>{$('cSave').textContent='교환권 저장';},1800); return;
+    }
+  }
+  showOverlay(couponURL,'교환권을 길게 눌러 사진에 저장해 두세요 💌','bbaebbaero-coupon.png');
+};
+$('cClose').onclick=()=>{$('cModal').hidden=true;};
+$('cModal').onclick=e=>{if(e.target.id==='cModal')$('cModal').hidden=true;};
+$('cAgain').onclick=openCoupon;
 
 /* drag-to-pull on the box */
 let drag=null;
