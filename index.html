@@ -151,6 +151,13 @@
   .ticket .note{font-size:12px;color:var(--sub);padding:2px 20px 16px}
   .cbtns{display:flex;gap:10px;width:min(340px,90vw)}
   .cbtns .btn{padding:14px;font-size:17px}
+  #cAsk{align-items:center}
+  #cAsk .btn{flex:1;transition:flex-grow .35s cubic-bezier(.3,1.4,.5,1),font-size .35s,padding .35s,transform .35s,opacity .3s;white-space:nowrap;overflow:hidden}
+  #cYes{animation:none}
+  #cYes.pulse{animation:ypulse .45s}
+  @keyframes ypulse{40%{transform:scale(1.06)}}
+  .ticket.yay{animation:tyay .55s cubic-bezier(.3,1.6,.5,1)}
+  @keyframes tyay{0%{transform:none}35%{transform:translateY(-14px) scale(1.03) rotate(-1.5deg)}70%{transform:translateY(2px) rotate(.8deg)}100%{transform:none}}
   .rfoot .cagain{background:none;border:none;font-family:"Jua";font-size:15px;color:var(--rose-d);margin:-6px 0 12px;cursor:pointer}
   .ov{position:fixed;inset:0;z-index:20;background:rgba(40,20,20,.82);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:20px;gap:14px}
   .ov img{max-height:66vh;max-width:88vw;border-radius:16px;box-shadow:0 10px 30px rgba(0,0,0,.35);-webkit-touch-callout:default}
@@ -189,6 +196,7 @@
     <div class="field">
       <label>보내는 사람</label>
       <input type="text" id="from" maxlength="8" placeholder="내 이름">
+      <div class="warn" id="fromWarn"></div>
     </div>
   </div>
 
@@ -263,10 +271,11 @@
   </div>
 </section>
 
+<canvas id="fx" style="position:fixed;inset:0;width:100%;height:100%;pointer-events:none;z-index:18"></canvas>
 <div class="cmodal" id="cModal" hidden>
   <div class="ticket" id="ticket">
     <div class="top">빼빼로 교환권 <small>No.1111</small></div>
-    <div class="what">만나면 빼빼로 쏩니다</div>
+    <div class="what">만나면 빼빼로 사주기</div>
     <div class="rows">
       <div class="r"><span>사주는 사람</span><b id="cFrom"></b></div>
       <div class="r"><span>받는 사람</span><b id="cTo"></b></div>
@@ -275,7 +284,11 @@
     <div class="perf"></div>
     <div class="note">※ 직접 만나야 사용할 수 있어요. 양도 불가 😏</div>
   </div>
-  <div class="cbtns">
+  <div class="cbtns" id="cAsk">
+    <button class="btn ghost" id="cNo" type="button">싫어요</button>
+    <button class="btn primary" id="cYes" type="button">좋아요</button>
+  </div>
+  <div class="cbtns" id="cDone" hidden>
     <button class="btn ghost" id="cClose" type="button">닫기</button>
     <button class="btn primary" id="cSave" type="button">교환권 저장</button>
   </div>
@@ -674,8 +687,9 @@ $('msg').addEventListener('compositionstart',()=>{composing=true;});
 $('msg').addEventListener('compositionend',()=>{composing=false; onMsgInput();});
 $('msg').addEventListener('input',onMsgInput);
 ['to','from'].forEach(id=>$(id).addEventListener('input',renderPreview));
+$('from').addEventListener('input',()=>{$('fromWarn').textContent='';});
 $('heartBtn').onclick=()=>{const t=$('msg');const p=t.selectionStart??t.value.length;t.value=(t.value.slice(0,p)+'♥'+t.value.slice(p)).slice(0,24);t.focus();t.selectionStart=t.selectionEnd=p+1;renderPreview();};
-function validData(){const d=currentData();if(!buildSticks(d.m,d.c,{x:0,y:0,w:300,h:200}).sticks.length){$('warn').textContent='메시지를 먼저 써주세요!';$('msg').focus();return null;}return d;}
+function validData(){const d=currentData();if(!buildSticks(d.m,d.c,{x:0,y:0,w:300,h:200}).sticks.length){$('warn').textContent='메시지를 먼저 써주세요!';$('msg').focus();return null;}if(d.k&&!d.f){$('fromWarn').textContent='교환권을 보내려면 보내는 사람 이름을 써주세요!';$('from').focus();$('from').scrollIntoView({behavior:'smooth',block:'center'});return null;}return d;}
 $('makeBtn').onclick=async()=>{
   const d=validData(); if(!d) return;
   const btn=$('makeBtn'); if(btn.disabled) return;
@@ -748,7 +762,7 @@ function resetReceive(){
   cancelAnimationFrame(RS.raf); RS.phase='idle';
   box.classList.remove('gone','shake'); tips.style.transform=''; tips.style.opacity='1';
   $('rfoot').classList.remove('show'); $('hint').style.opacity='1';
-  $('cModal').hidden=true; $('cAgain').hidden=true; clearTimeout(couponTimer); couponFile=null;
+  $('cModal').hidden=true; $('cAgain').hidden=true; clearTimeout(couponTimer); couponFile=null; couponOK=false; noCount=0;
   requestAnimationFrame(()=>{measure(); RS.ctx.clearRect(0,0,RS.w,RS.h); placeHint();});
 }
 function placeHint(){const bb=box.getBoundingClientRect();$('hint').style.top=(bb.top-34-(bb.height*.0))+'px';}
@@ -850,7 +864,7 @@ $('storyBtn').onclick=async()=>{
 
 /* ---------- 빼빼로 교환권 ---------- */
 let couponTimer=0, couponFile=null, couponURL='';
-function couponWho(d){return (d.f||'비밀')+' → '+(d.t||'너');}
+function couponWho(d){return (d.f||'보낸 사람')+' → '+(d.t||'나');}
 async function makeCouponImage(d){
   const W=1080,H=1350,cv=document.createElement('canvas');cv.width=W;cv.height=H;const ctx=cv.getContext('2d');
   try{await document.fonts.load('60px Jua');}catch(e){}
@@ -861,8 +875,8 @@ async function makeCouponImage(d){
   ctx.save();rrect(ctx,X,Y,TW,TH,R);ctx.clip();ctx.fillStyle='#E2445C';ctx.fillRect(X,Y,TW,150);ctx.restore();
   ctx.textBaseline='middle';ctx.textAlign='left';ctx.fillStyle='#fff';ctx.font='70px Jua';ctx.fillText('빼빼로 교환권',X+60,Y+78);
   ctx.textAlign='right';ctx.font='32px Jua';ctx.globalAlpha=.85;ctx.fillText('No.1111',X+TW-56,Y+80);ctx.globalAlpha=1;
-  ctx.textAlign='center';ctx.font='62px Jua';ctx.fillStyle='#C9354E';ctx.fillText('만나면 빼빼로 쏩니다',W/2,Y+225);
-  const rows=[['사주는 사람',d.f||'비밀','#3B2219'],['받는 사람',d.t||'너','#3B2219'],['유효기간','다음에 볼 때까지','#3B2219']];
+  ctx.textAlign='center';ctx.font='62px Jua';ctx.fillStyle='#C9354E';ctx.fillText('만나면 빼빼로 사주기',W/2,Y+225);
+  const rows=[['사주는 사람',d.f||'보낸 사람','#3B2219'],['받는 사람',d.t||'나','#3B2219'],['유효기간','다음에 볼 때까지','#3B2219']];
   rows.forEach(([k,v,c],i)=>{const y=Y+330+i*100;ctx.textAlign='left';ctx.font='34px "Gowun Dodum"';ctx.fillStyle='#8A6A5E';ctx.fillText(k,X+60,y);
     ctx.font='50px Jua';ctx.fillStyle=c;ctx.fillText(v,X+280,y);
     if(i<2){ctx.strokeStyle='#F3DCE0';ctx.lineWidth=3;ctx.setLineDash([10,10]);ctx.beginPath();ctx.moveTo(X+56,y+59);ctx.lineTo(X+TW-56,y+59);ctx.stroke();ctx.setLineDash([]);}});
@@ -879,10 +893,59 @@ async function prepareCoupon(d){
   try{const cv=await makeCouponImage(d);const blob=await new Promise(r=>cv.toBlob(r,'image/png'));
     couponURL=URL.createObjectURL(blob);couponFile=new File([blob],'bbaebbaero-coupon.png',{type:'image/png'});}catch(e){console.warn(e);}
 }
+let couponOK=false, noCount=0;
+const NO_TEXT=['싫어요','진짜?','흠…','ㅠㅠ','…'];
+function setAsk(){
+  const yes=$('cYes'), no=$('cNo');
+  yes.style.flexGrow=String(1+noCount*1.6); yes.style.fontSize=(17+noCount*3.2)+'px'; yes.style.padding=(14+noCount*3)+'px 14px';
+  const k=Math.max(0,1-noCount*0.24); no.style.flexGrow=String(k); no.style.fontSize=(17-noCount*2.6)+'px';
+  no.style.padding=noCount>=4?'0':(14-noCount*2)+'px 8px'; no.style.opacity=noCount>=4?'0':String(1-noCount*0.12);
+  no.style.flexBasis=noCount>=4?'0':''; no.style.borderWidth=noCount>=4?'0':'';
+  no.textContent=NO_TEXT[Math.min(noCount,NO_TEXT.length-1)]; no.disabled=noCount>=4;
+  yes.textContent=noCount>=3?'좋아요 ♥':'좋아요';
+}
+function showCouponButtons(){ $('cAsk').hidden=couponOK; $('cDone').hidden=!couponOK; if(!couponOK) setAsk(); }
+$('cNo').onclick=()=>{ noCount=Math.min(4,noCount+1); setAsk(); const y=$('cYes'); y.classList.remove('pulse'); void y.offsetWidth; y.classList.add('pulse'); try{navigator.vibrate&&navigator.vibrate(12);}catch(e){} };
+/* 좋아요: 위에서 한 번 샤랄라 내려오는 색종이 */
+function confettiRain(){
+  const cv=$('fx'); const f=fitCanvas(cv); const ctx=f.ctx, W=f.w, H=f.h, rnd=Math.random;
+  const COLORS=['#E2445C','#F48FB1','#FFC2D4','#FFD66E','#FFF4EC','#B98AE0','#7FD1C7','#F07FA2'];
+  const P=[]; const N=Math.round(Math.min(160,W*0.38));
+  for(let i=0;i<N;i++){
+    P.push({x:rnd()*W, y:-20-rnd()*H*0.55, w:6+rnd()*6, h:9+rnd()*8, c:COLORS[i%COLORS.length],
+      vy:4.2+rnd()*2.6, sway:18+rnd()*28, ph:rnd()*6.3, fs:.05+rnd()*.06, rot:rnd()*6.3, vr:(rnd()-.5)*.12,
+      flip:rnd()*6.3, vf:.08+rnd()*.12, round:rnd()<.22});
+  }
+  const t0=performance.now(); let last=t0;
+  (function tick(now){
+    const dt=Math.min(2.2,(now-last)/16.7); last=now; const el=now-t0;
+    ctx.clearRect(0,0,W,H); let alive=0;
+    const fade=el>3000?Math.max(0,1-(el-3000)/600):1;
+    for(const p of P){
+      p.y+=p.vy*dt; p.ph+=p.fs*dt; p.rot+=p.vr*dt; p.flip+=p.vf*dt;
+      if(p.y>H+30) continue; alive++;
+      const x=p.x+Math.sin(p.ph)*p.sway;
+      ctx.save(); ctx.globalAlpha=fade; ctx.translate(x,p.y); ctx.rotate(p.rot); ctx.scale(1,Math.cos(p.flip));
+      ctx.fillStyle=p.c;
+      if(p.round){ctx.beginPath();ctx.arc(0,0,p.w*.55,0,7);ctx.fill();}
+      else ctx.fillRect(-p.w/2,-p.h/2,p.w,p.h);
+      if(p.c==='#FFF4EC'){ctx.strokeStyle='rgba(200,150,140,.5)';ctx.lineWidth=1;ctx.strokeRect(-p.w/2,-p.h/2,p.w,p.h);}
+      ctx.restore();
+    }
+    if(alive&&fade>0) requestAnimationFrame(tick); else ctx.clearRect(0,0,W,H);
+  })(t0);
+}
+$('cYes').onclick=()=>{
+  couponOK=true; showCouponButtons();
+  const tk=$('ticket'); tk.classList.remove('yay'); void tk.offsetWidth; tk.classList.add('yay');
+  confettiRain();
+  try{navigator.vibrate&&navigator.vibrate([15,40,15]);}catch(e){}
+};
 function openCoupon(){
   const d=RS.data||{};
-  $('cFrom').textContent=d.f||'비밀'; $('cTo').textContent=d.t||'너';
+  $('cFrom').textContent=d.f||'보낸 사람'; $('cTo').textContent=d.t||'나';
   const tk=$('ticket'); tk.style.animation='none'; void tk.offsetWidth; tk.style.animation='';
+  showCouponButtons();
   $('cModal').hidden=false; $('cAgain').hidden=false;
   if(!couponFile) prepareCoupon(d);   // 미리 만들어 둬야 저장 버튼 누를 때 바로 공유창이 열려요 (iOS)
 }
@@ -904,7 +967,7 @@ $('cSave').onclick=async()=>{
   showOverlay(couponURL,'교환권을 길게 눌러 사진에 저장해 두세요 💌','bbaebbaero-coupon.png');
 };
 $('cClose').onclick=()=>{$('cModal').hidden=true;};
-$('cModal').onclick=e=>{if(e.target.id==='cModal')$('cModal').hidden=true;};
+$('cModal').onclick=e=>{if(e.target.id==='cModal'&&couponOK)$('cModal').hidden=true;};   // 좋아요 누르기 전엔 못 닫음
 $('cAgain').onclick=openCoupon;
 
 /* drag-to-pull on the box */
